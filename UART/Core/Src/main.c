@@ -23,6 +23,7 @@
 /* USER CODE BEGIN Includes */
 #include <string.h>
 #include <stdio.h>
+#include <stdbool.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -66,6 +67,55 @@ int __io_putchar(int ch){
     HAL_UART_Transmit(&huart2, (uint8_t*)&ch, 1, HAL_MAX_DELAY);
     return 1;
 }
+
+#define LINE_MAX_LEN 80
+static char line_buffer[LINE_MAX_LEN + 1];
+static uint32_t line_len;
+
+void line_append(uint8_t value){
+	if(value == '\r' || value == '\n'){
+		// odebranie znaku końca lini
+		if(line_len > 0){
+			// jesli bufor nie jest pusty to dodajemy 0 na koncu linii
+			line_buffer[line_len] = '\0';
+
+			//Przetwarzanie danych
+			  if(strcmp(line_buffer, "on") == 0){
+				  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+			  } else if (strcmp(line_buffer, "off") == 0){
+				  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+			  } else {
+				  printf("Nieznane polecenie: %s\n", line_buffer);
+			  }
+
+			//przetwarzamy dane
+			printf("Otrzymano: %s\n", line_buffer);
+			// zaczynamy zbieranie danych od nowa
+			line_len = 0;
+		}
+	} else {
+		if(line_len >= LINE_MAX_LEN){
+			// za duzo danych, usuwamy wszystko co odebralismy dotychczas
+			line_len = 0;
+		}
+		// dopisujemy wartosc do bufora
+		line_buffer[line_len++] = value;
+	}
+
+}
+
+
+
+
+
+
+bool is_Button_pressed(void){
+	if (HAL_GPIO_ReadPin(USER_BTN_GPIO_Port, USER_BTN_Pin) == GPIO_PIN_RESET) {
+		return true;
+	} else {
+		return false;
+	}
+}
 /* USER CODE END 0 */
 
 /**
@@ -84,6 +134,7 @@ int main(void)
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
 
+
   /* USER CODE BEGIN Init */
 
   /* USER CODE END Init */
@@ -99,14 +150,33 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-  float pi = 3.14f;
-  printf("Liczba pi wynosi: %f\n", pi);
+//  float pi = 3.14f;
+//  printf("Liczba pi wynosi: %f\n", pi);
+  int num = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  if(is_Button_pressed()){
+		  num++;
+		  printf("Num: %i\n", num);
+
+		  while(is_Button_pressed()){
+		  }
+	  }
+
+	  if( num >= 10){
+		  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+	  }
+
+
+//	  uint8_t value;
+//	  if(HAL_UART_Receive(&huart2, &value, 1, 0) == HAL_OK){
+//		  line_append(value);
+//	  }
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -195,11 +265,29 @@ static void MX_USART2_UART_Init(void)
   */
 static void MX_GPIO_Init(void)
 {
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
 /* USER CODE BEGIN MX_GPIO_Init_1 */
 /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : USER_BTN_Pin */
+  GPIO_InitStruct.Pin = USER_BTN_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(USER_BTN_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : LD2_Pin */
+  GPIO_InitStruct.Pin = LD2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
